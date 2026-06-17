@@ -349,6 +349,9 @@ class nnXNetTrainer_ADAM(nnXNetTrainer):
                 f"Mean Dice head_{suffix}: {mean_dice:.4f}  "
                 f"per_class: {[round(x, 4) for x in dice_per_class]}"
             )
+            # Also log as generic 'mean_fg_dice' so plot_progress_png renders it
+            if suffix == '2':
+                self.logger.log('mean_fg_dice', mean_dice, self.current_epoch)
 
         # Validation loss
         if self.is_ddp:
