@@ -23,6 +23,8 @@ set -e
 # ==========================================================================
 DATASET_ID=1
 DATASET_NAME="Dataset001_ADAM"
+HOLDOUT_COUNT=18     # 0 = no holdout (all data for 5-fold CV)
+SEED=42              # Fixed seed for reproducible holdout split
 
 # Training config
 CONFIG="3d_fullres"
@@ -81,7 +83,9 @@ mkdir -p "$nnXNet_raw"
 
 python adam/convert_adam_to_nnXNet.py \
     --input "$ADAM_DATA" \
-    --output "$nnXNet_raw/$DATASET_NAME"
+    --output "$nnXNet_raw/$DATASET_NAME" \
+    --holdout_count $HOLDOUT_COUNT \
+    --seed $SEED
 echo "  Done."
 
 # ==========================================================================
@@ -118,7 +122,7 @@ echo "  Done."
 # 4. Train
 # ==========================================================================
 echo ""
-echo "[Step 4/4] Starting training..."
+echo "[Step 4/5] Starting training..."
 echo "  Trainer: $TRAINER"
 echo "  Epochs:  $NUM_EPOCHS"
 echo "  Config:  $CONFIG"
@@ -131,3 +135,17 @@ echo "============================================"
 echo "Training complete!"
 echo "Results saved to: $nnXNet_results/$DATASET_NAME"
 echo "============================================"
+
+# ==========================================================================
+# 5. Evaluate on holdout set
+# ==========================================================================
+if [ "$HOLDOUT_COUNT" -gt 0 ]; then
+    echo ""
+    echo "[Step 5/5] Evaluating on holdout set..."
+    python adam/eval_holdout.py --fold $FOLD
+    echo ""
+    echo "============================================"
+    echo "Holdout results saved to:"
+    echo "  $nnXNet_results/$DATASET_NAME/*/fold_$FOLD/holdout_eval/holdout_summary.json"
+    echo "============================================"
+fi
