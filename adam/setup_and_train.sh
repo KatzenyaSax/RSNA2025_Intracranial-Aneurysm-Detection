@@ -95,16 +95,21 @@ nnXNet_plan_and_preprocess -d $DATASET_ID -c $CONFIG --verify_dataset_integrity
 # Override batch_size to 1 in the generated plans (safety for 32GB VRAM)
 PLANS_FILE="$nnXNet_preprocessed/$DATASET_NAME/nnXNetPlans.json"
 if [ -f "$PLANS_FILE" ]; then
-    echo "  Adjusting batch_size to 1 in plans..."
+    echo "  Patching plans for ADAM (batch_size=1, seg_index)..."
     python -c "
 import json
 with open('$PLANS_FILE') as f:
     plans = json.load(f)
 for cfg_name in plans.get('configurations', {}):
-    plans['configurations'][cfg_name]['batch_size'] = 1
+    cfg = plans['configurations'][cfg_name]
+    cfg['batch_size'] = 1
+    # Required for nnXNet_predict and ResEncoderUNet_two_seg
+    cfg['seg_index'] = [[1]]
+    cfg['seg_index_1'] = [[1]]
+    cfg['seg_index_2'] = [[1]]
 with open('$PLANS_FILE', 'w') as f:
     json.dump(plans, f, indent=2)
-print('  batch_size set to 1')
+print('  Plans patched')
 "
 fi
 echo "  Done."
