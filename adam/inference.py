@@ -209,16 +209,48 @@ def main():
         pred = predictor.predict_single_npy_array(
             img, props, None, None, save_or_return_probabilities=False)
 
-        # pred is a numpy array with shape [C, D, H, W] where C=2 (bg, aneurysm)
-        if pred.ndim == 4 and pred.shape[0] == 2:
+        # pred: shape depends on predictor output
+        # Could be [C, D, H, W], [D, H, W], or [H, W, D]
+        print(f"  Raw pred shape: {pred.shape}")
+
+        if pred.ndim == 4:
             pred_mask = pred.argmax(0).astype(np.int16)
+        elif pred.ndim == 3:
+            # Might be [C, H, W] (2D slice) or [D, H, W]
+            if pred.shape[0] <= 2:
+                pred_mask = pred.argmax(0).astype(np.int16)
+            else:
+                pred_mask = (pred > 0.5).astype(np.int16)
         else:
-            pred_mask = (pred[0] > 0.5).astype(np.int16)
+            pred_mask = (pred > 0.5).astype(np.int16)
 
         # Load ground truth
         gt_nii = nib.load(lbl_path)
         gt_mask = gt_nii.get_fdata().astype(np.int16)
         gt_mask = (gt_mask > 0).astype(np.int16)
+        print(f"  Pred mask shape: {pred_mask.shape}, GT shape: {gt_mask.shape}")
+
+        # Handle orientation mismatch: nnXNet predictor uses SimpleITK
+        # (D, H, W), nibabel loads as (H, W, D). Try to align.
+        if pred_mask.shape != gt_mask.shape:
+            if pred_mask.shape == gt_mask.T.shape:
+                pred_mask = pred_mask.T
+            elif tuple(reversed(pred_mask.shape)) == gt_mask.shape:
+                pred_mask = pred_mask.T
+            elif pred_mask.ndim == 3 and gt_mask.ndim == 3:
+                # Try all transpositions to match
+                matched = False
+                for perm in [(1, 0, 2), (2, 1, 0), (0, 2, 1), (1, 2, 0), (2, 0, 1)]:
+                    if pred_mask.transpose(perm).shape == gt_mask.shape:
+                        pred_mask = pred_mask.transpose(perm)
+                        matched = True
+                        break
+                if not matched:
+                    print(f"  WARNING: cannot align shapes, skipping {case_id}")
+                    continue
+            else:
+                print(f"  WARNING: cannot align shapes, skipping {case_id}")
+                continue
 
         # Compute Dice
         dsc = compute_dice(pred_mask, gt_mask)
