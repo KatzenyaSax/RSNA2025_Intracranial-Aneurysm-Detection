@@ -63,6 +63,22 @@ class nnXNetTrainer_ADAM(nnXNetTrainer):
         self.seg_ce_class_weights_1 = [10]  # high weight for aneurysm
         self.seg_ce_class_weights_2 = [10]
 
+    # ------------------------------------------------------------------
+    # Override: ResEncoderUNet_two_seg stores deep_supervision at root,
+    # not at .decoder.deep_supervision like standard nnU-Net
+    # ------------------------------------------------------------------
+    def set_deep_supervision_enabled(self, enabled: bool):
+        if self.is_ddp:
+            mod = self.network.module
+        else:
+            mod = self.network
+        if isinstance(mod, torch.nn.Module):
+            # torch.compile wraps in OptimizedModule
+            from torch._dynamo import OptimizedModule
+            if isinstance(mod, OptimizedModule):
+                mod = mod._orig_mod
+        mod.deep_supervision = enabled
+
         self.print_to_log_file(
             "nnXNetTrainer_ADAM initialized: "
             f"deep_supervision={self.enable_deep_supervision}, "
