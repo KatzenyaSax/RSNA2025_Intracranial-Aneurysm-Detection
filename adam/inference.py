@@ -175,25 +175,20 @@ def main():
         checkpoint_name=args.checkpoint,
     )
 
-    # ---- Wrap network: ResEncoderUNet_two_seg returns (seg_1, seg_2),
+    # ---- Monkey-patch: ResEncoderUNet_two_seg returns (seg_1, seg_2),
     #      but standard nnXNetPredictor expects a single tensor.
-    #      Return only seg_1 (head 2 is redundant for binary ADAM).
+    #      Replace forward to return only seg_1.
     # ------------------------------------------------------------------
-    _orig_network = predictor.network
+    _orig_forward = predictor.network.forward
 
-    class SingleOutputWrapper(torch.nn.Module):
-        def __init__(self, net):
-            super().__init__()
-            self.net = net
+    def _patched_forward(x):
+        out = _orig_forward(x)
+        if isinstance(out, (tuple, list)):
+            return out[0]  # seg_1 only
+        return out
 
-        def forward(self, x):
-            out = self.net(x)
-            if isinstance(out, (tuple, list)):
-                return out[0]  # seg_1
-            return out
-
-    predictor.network = SingleOutputWrapper(_orig_network)
-    print("Wrapped network for single-output inference (using seg_1)")
+    predictor.network.forward = _patched_forward
+    print("Patched network forward for single-output inference (using seg_1)")
 
     # ---- Run inference and compute Dice ----
     maybe_mkdir_p(args.output_dir)
