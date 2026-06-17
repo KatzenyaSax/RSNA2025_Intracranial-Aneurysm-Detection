@@ -101,21 +101,29 @@ class nnXNetTrainer_ADAM(nnXNetTrainer):
         """
         Build ResEncoderUNet_two_seg for binary aneurysm segmentation.
 
-        Uses the same architecture as BraveCoWCoW but with:
-          - 2 output classes per head (bg + aneurysm)
-          - No classification/modality heads
-          - Reduced feature dims optionally
+        Reads strides and kernel_sizes from arch_init_kwargs (plans)
+        to match the patch/spacing configuration, falling back to isotropic
+        defaults only when not present.
         """
+        # Use planner-generated strides & kernels (respects data anisotropy)
+        strides = arch_init_kwargs.get('strides',
+            [(1, 1, 1), (2, 2, 2), (2, 2, 2), (2, 2, 2), (2, 2, 2), (2, 2, 2)])
+        # Convert list → tuple for each entry
+        strides = [tuple(s) if isinstance(s, list) else s for s in strides]
+
+        kernel_sizes = arch_init_kwargs.get('kernel_sizes',
+            [(3, 3, 1), (3, 3, 3), (3, 3, 3), (3, 3, 3), (3, 3, 3), (3, 3, 3)])
+        kernel_sizes = [tuple(k) if isinstance(k, list) else k for k in kernel_sizes]
+
         network = ResEncoderUNet_two_seg(
             in_channels=num_input_channels,
             out_channels_1=num_output_channels_1,
             out_channels_2=num_output_channels_2,
-            n_stages=6,
-            features_per_stage=[32, 64, 128, 256, 320, 320],
-            kernel_sizes=[(3, 3, 1), (3, 3, 3), (3, 3, 3),
-                           (3, 3, 3), (3, 3, 3), (3, 3, 3)],
-            strides=[(1, 1, 1), (2, 2, 2), (2, 2, 2),
-                      (2, 2, 2), (2, 2, 2), (2, 2, 2)],
+            n_stages=arch_init_kwargs.get('n_stages', 6),
+            features_per_stage=arch_init_kwargs.get(
+                'features_per_stage', [32, 64, 128, 256, 320, 320]),
+            kernel_sizes=kernel_sizes,
+            strides=strides,
             n_blocks_per_stage=[1, 3, 4, 6, 6, 6],
             n_conv_per_stage_decoder=[1, 1, 1, 1, 1],
             deep_supervision=enable_deep_supervision,
