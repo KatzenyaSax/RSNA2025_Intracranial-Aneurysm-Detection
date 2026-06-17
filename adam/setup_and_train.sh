@@ -19,12 +19,8 @@
 set -e
 
 # ==========================================================================
-# CONFIG — EDIT THESE
+# CONFIG
 # ==========================================================================
-ADAM_DATA="/home/user/data/adamDataset"          # <-- CHANGE THIS
-nnXNet_raw="/home/user/data/nnXNet_raw"
-nnXNet_preprocessed="/home/user/data/nnXNet_preprocessed"
-nnXNet_results="/home/user/data/nnXNet_results"
 DATASET_ID=1
 DATASET_NAME="Dataset001_ADAM"
 
@@ -39,6 +35,18 @@ NUM_EPOCHS=1000
 # ==========================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Auto-detect ADAM data: look for adamDataset/ next to the script
+if [ -d "$SCRIPT_DIR/adamDataset" ]; then
+    ADAM_DATA="$SCRIPT_DIR/adamDataset"
+elif [ -d "$REPO_ROOT/adamDataset" ]; then
+    ADAM_DATA="$REPO_ROOT/adamDataset"
+fi
+
+# Absolute paths inside the repo (clone-and-run, no manual config needed)
+nnXNet_raw="$REPO_ROOT/adam/nnXNet_raw"
+nnXNet_preprocessed="$REPO_ROOT/adam/nnXNet_preprocessed"
+nnXNet_results="$REPO_ROOT/adam/nnXNet_results"
 
 export nnXNet_raw nnXNet_preprocessed nnXNet_results
 
