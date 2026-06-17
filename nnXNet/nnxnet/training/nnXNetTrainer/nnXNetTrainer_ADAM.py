@@ -147,9 +147,13 @@ class nnXNetTrainer_ADAM(nnXNetTrainer):
                 self.enable_deep_supervision,
             ).to(self.device)
 
+            # torch.compile disabled: incompatible with anisotropic patch sizes
+            # (ResEncoderUNet residual connections have mismatched shapes under
+            #  compile's fake tensor tracing with do_dummy_2d_data_aug=True)
             if self._do_i_compile():
-                self.print_to_log_file('Using torch.compile...')
-                self.network = torch.compile(self.network)
+                self.print_to_log_file(
+                    'ADAM trainer: skipping torch.compile '
+                    '(incompatible with anisotropic patches)')
 
             self.optimizer, self.lr_scheduler = self.configure_optimizers()
 
