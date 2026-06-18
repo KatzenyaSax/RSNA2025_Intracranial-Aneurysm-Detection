@@ -416,6 +416,15 @@ class nnXNetTrainer_ADAM(nnXNetTrainer):
         self.current_epoch += 1
 
     # ------------------------------------------------------------------
+    # Skip post-training validation — our eval_holdout.py handles it.
+    # The standard nnXNetPredictor can't handle ResEncoderUNet_two_seg's
+    # tuple return (seg_1, seg_2) during mirror augmentation.
+    # ------------------------------------------------------------------
+    def perform_actual_validation(self, save_probabilities: bool = False):
+        self.print_to_log_file(
+            "Skipping built-in validation (use eval_holdout.py instead)")
+
+    # ------------------------------------------------------------------
     # Batch size override — force 1 for 32GB VRAM safety
     # ------------------------------------------------------------------
     def _set_batch_size_and_oversample(self):
